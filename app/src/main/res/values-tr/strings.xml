@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">NBA Tahmin Sistemi</string>
+
+    <string name="title">🏀 NBA Tahmin Sistemi</string>
+
+    <string name="weekend">Bu Hafta Sonu</string>
+
+    <string name="predict">Tahmin Yap</string>
+
+    <string name="prediction">🏆 Yapay Zekâ Tahmini</string>
+
+    <string name="winner">🏆 Tahmini Kazanan</string>
+
+    <string name="team_comparison">Takım Karşılaştırması</string>
+
+    <string name="recent_form">Son Form</string>
+
+    <string name="match_information">Maç Bilgileri</string>
+
+    <string name="back">Geri</string>
+
+    <string name="language">Dil</string>
+
+    <string name="prediction_description">AI analizine göre en yüksek kazanma olasılığına sahip takım.</string>
+
+</resources>

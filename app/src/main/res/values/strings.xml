@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+
+    <string name="app_name">NBA Predictor</string>
+
+    <string name="title">🏀 NBA Predictor</string>
+
+    <string name="weekend">This Weekend</string>
+
+    <string name="predict">Predict Winner</string>
+
+    <string name="prediction">🏆 AI Prediction</string>
+
+    <string name="winner">🏆 Predicted Winner</string>
+
+    <string name="team_comparison">Team Comparison</string>
+
+    <string name="recent_form">Recent Form</string>
+
+    <string name="match_information">Match Information</string>
+
+    <string name="back">Back</string>
+
+    <string name="language">Language</string>
+
+    <string name="prediction_description">Team with the highest probability according to AI analysis.</string>
+
+</resources>
