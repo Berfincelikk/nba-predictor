@@ -3,10 +3,9 @@ package com.example.nba.presentation.screens
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -14,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import androidx.navigation.NavHostController
 import com.example.nba.R
 import com.example.nba.data.model.Game
+import com.example.nba.data.remote.RetrofitClient
 import com.example.nba.presentation.components.ExpandableSection
 import com.example.nba.presentation.components.MatchInfoCard
 import com.example.nba.presentation.components.PredictionCard
@@ -22,24 +22,41 @@ import com.example.nba.presentation.components.TeamComparisonCard
 
 @Composable
 fun ResultScreen(
-    navController: NavHostController
+    navController: NavHostController,
+    gameId: String
 ) {
 
-    // Şimdilik sahte veri kullanıyoruz.
-    // API geldiğinde ViewModel üzerinden gelecek.
+    var game by remember { mutableStateOf<Game?>(null) }
+    var isLoading by remember { mutableStateOf(true) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
 
-    val game = Game(
-        homeTeam = "Los Angeles Lakers",
-        awayTeam = "Boston Celtics",
-        homeProbability = 68,
-        awayProbability = 32,
-        homeForm = "WWLWW",
-        awayForm = "WLWLW",
-        arena = "Crypto.com Arena",
-        city = "Los Angeles",
-        matchTime = "20:30",
-        matchDate = "07 Aug 2026"
-    )
+    LaunchedEffect(gameId) {
+
+        try {
+            isLoading = true
+            errorMessage = null
+
+            val response = RetrofitClient.api.getGameDetail(gameId)
+
+            game = Game(
+                homeTeam = response.homeTeam,
+                awayTeam = response.awayTeam,
+                homeProbability = response.homeProbability,
+                awayProbability = response.awayProbability,
+                homeForm = response.homeForm,
+                awayForm = response.awayForm,
+                arena = response.arena,
+                city = response.city,
+                matchTime = response.matchTime,
+                matchDate = response.matchDate
+            )
+
+        } catch (e: Exception) {
+            errorMessage = e.message ?: "Tahmin alınamadı."
+        } finally {
+            isLoading = false
+        }
+    }
 
     Column(
         modifier = Modifier
@@ -56,30 +73,59 @@ fun ResultScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        PredictionCard(game)
+        when {
 
-        Spacer(modifier = Modifier.height(16.dp))
+            isLoading -> {
 
-        ExpandableSection(
-            title = stringResource(R.string.team_comparison)
-        ) {
-            TeamComparisonCard(game)
-        }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(vertical = 48.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    CircularProgressIndicator()
+                }
+            }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            errorMessage != null -> {
 
-        ExpandableSection(
-            title = stringResource(R.string.recent_form)
-        ) {
-            RecentFormCard(game)
-        }
+                Text(
+                    text = errorMessage ?: "Bir hata oluştu.",
+                    color = MaterialTheme.colorScheme.error,
+                    style = MaterialTheme.typography.bodyLarge
+                )
+            }
 
-        Spacer(modifier = Modifier.height(12.dp))
+            game != null -> {
 
-        ExpandableSection(
-            title = stringResource(R.string.match_information)
-        ) {
-            MatchInfoCard(game)
+                val currentGame = game!!
+
+                PredictionCard(currentGame)
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                ExpandableSection(
+                    title = stringResource(R.string.team_comparison)
+                ) {
+                    TeamComparisonCard(currentGame)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                ExpandableSection(
+                    title = stringResource(R.string.recent_form)
+                ) {
+                    RecentFormCard(currentGame)
+                }
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                ExpandableSection(
+                    title = stringResource(R.string.match_information)
+                ) {
+                    MatchInfoCard(currentGame)
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -94,7 +140,5 @@ fun ResultScreen(
                 text = "← ${stringResource(R.string.back)}"
             )
         }
-
     }
-
 }

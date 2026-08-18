@@ -5,16 +5,14 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.nba.R
-import com.example.nba.data.model.Game
+import com.example.nba.data.model.GamePreviewResponse
 
 @Composable
 fun GameCard(
-    game: Game,
+    game: GamePreviewResponse,
     onPredictClick: () -> Unit
 ) {
 
@@ -85,7 +83,6 @@ fun GameCard(
                         textAlign = TextAlign.Center
                     )
                 }
-
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -112,13 +109,8 @@ fun GameCard(
                 modifier = Modifier.fillMaxWidth(),
                 onClick = onPredictClick
             ) {
-                Text(
-                    text = stringResource(R.string.predict)
-                )
+                Text("Predict")
             }
-
         }
-
     }
-
 }

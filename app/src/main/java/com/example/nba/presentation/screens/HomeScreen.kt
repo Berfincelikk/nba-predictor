@@ -26,6 +26,8 @@ fun HomeScreen(
 ) {
 
     val games = viewModel.games.value
+    val isLoading = viewModel.isLoading.value
+    val errorMessage = viewModel.errorMessage.value
 
     Column(
         modifier = Modifier
@@ -54,7 +56,9 @@ fun HomeScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large,
-            elevation = CardDefaults.cardElevation(defaultElevation = 8.dp),
+            elevation = CardDefaults.cardElevation(
+                defaultElevation = 8.dp
+            ),
             colors = CardDefaults.cardColors(
                 containerColor = MaterialTheme.colorScheme.primaryContainer
             )
@@ -72,13 +76,34 @@ fun HomeScreen(
 
                 Spacer(modifier = Modifier.height(8.dp))
 
-                Text(
-                    text = "${games.size} matches available for prediction",
-                    style = MaterialTheme.typography.bodyLarge
-                )
+                when {
 
+                    isLoading -> {
+
+                        Text(
+                            text = "Loading matches...",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+
+                    errorMessage != null -> {
+
+                        Text(
+                            text = "❌ $errorMessage",
+                            color = MaterialTheme.colorScheme.error,
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+                    }
+
+                    else -> {
+
+                        Text(
+                            text = "${games.size} matches available for prediction",
+                            style = MaterialTheme.typography.bodyLarge
+                        )
+                    }
+                }
             }
-
         }
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -91,27 +116,55 @@ fun HomeScreen(
 
         Spacer(modifier = Modifier.height(12.dp))
 
-        LazyColumn(
-            verticalArrangement = Arrangement.spacedBy(16.dp)
-        ) {
+        if (!isLoading && errorMessage == null && games.isNotEmpty()) {
 
-            items(games) { game ->
+            LazyColumn(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
 
-                GameCard(
-                    game = game,
-                    onPredictClick = {
-                        navController.navigate(Screen.Result.route)
-                    }
-                )
+                items(
+                    items = games,
+                    key = { game -> game.gameId }
+                ) { game ->
 
+                    GameCard(
+                        game = game,
+                        onPredictClick = {
+
+                            navController.navigate(
+                                Screen.Result.createRoute(game.gameId)
+                            )
+                        }
+                    )
+                }
+
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                }
             }
 
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-            }
+        } else if (isLoading) {
 
+            Text(
+                text = "Maçlar yükleniyor...",
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+        } else if (errorMessage != null) {
+
+            Text(
+                text = "Maçlar yüklenirken hata oluştu.",
+                color = MaterialTheme.colorScheme.error,
+                style = MaterialTheme.typography.bodyLarge
+            )
+
+        } else {
+
+            Text(
+                text = "Bu tarih için maç bulunamadı.",
+                style = MaterialTheme.typography.bodyLarge
+            )
         }
-
     }
-
 }
