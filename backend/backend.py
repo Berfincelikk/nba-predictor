@@ -15,12 +15,15 @@ from nba_api.stats.static import teams
 
 app = FastAPI(title="Sade NBA Tahmin API - ESPN Destekli")
 
-#Model yükleme
+# Model yükleme 
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "nba_xgboost_super_model.pkl")
+
 try:
-    model = joblib.load("nba_xgboost_super_model.pkl")
-    print("✅ Model başarıyla yüklendi.")
+    model = joblib.load(MODEL_PATH)
+    print("Model başarıyla yüklendi.")
 except Exception as e:
-    print(f"⚠️ Model bulunamadı. Hata: {e}")
+    print(f"Model bulunamadı. Hata: {e}")
     model = None
 
 
