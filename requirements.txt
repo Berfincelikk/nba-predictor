@@ -2,8 +2,7 @@ fastapi
 uvicorn
 requests
 pandas
-numpy
-scipy
-xgboost
+joblib
 nba_api
-python-dotenv
+xgboost
+scikit-learn
