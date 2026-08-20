@@ -15,7 +15,7 @@ from nba_api.stats.static import teams
 
 app = FastAPI(title="Sade NBA Tahmin API - ESPN Destekli")
 
-# Model yükleme (Dosyanın bulunduğu klasörü dinamik bulur)
+# Model yükleme 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 MODEL_PATH = os.path.join(BASE_DIR, "nba_xgboost_super_model.pkl")
 
@@ -25,6 +25,16 @@ try:
 except Exception as e:
     print(f"⚠️ Model bulunamadı. Hata: {e}")
     model = None
+
+DETAIL_CACHE = {}
+CACHE_EXPIRE_SECONDS = 600  
+
+CUSTOM_HEADERS = {
+    'Host': 'stats.nba.com',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    'Referer': 'https://www.nba.com/'
+}
 
 # ŞEMALAR VE YARDIMCI FONKSİYONLAR
 
@@ -146,8 +156,16 @@ def get_games_list(
 #Detay Ekranı
 @app.get("/games/{game_id}/detail", response_model=GameDetailResponse)
 def get_game_detail(game_id: str):
+    current_time = time.time()
+    
+    # 1. Önbellek Kontrolü 
+    if game_id in DETAIL_CACHE:
+        cached_data, timestamp = DETAIL_CACHE[game_id]
+        if current_time - timestamp < CACHE_EXPIRE_SECONDS:
+            return cached_data
+
     try:
-        # Maç çekme
+        #ESPN'den Maç Temel Detaylarını Çekme
         url = f"http://site.api.espn.com/apis/site/v2/sports/basketball/nba/summary?event={game_id}"
         response = requests.get(url, timeout=5)
         data = response.json()
@@ -157,7 +175,7 @@ def get_game_detail(game_id: str):
         match_date = header.get('date', '')[:10]
         match_time = header.get('status', {}).get('type', {}).get('detail', 'Bilinmiyor')
         
-        # Arena Şehir Bilgisi
+        # Arena ve Şehir Bilgisi
         game_info = data.get('gameInfo', {})
         venue_info = game_info.get('venue', {})
         
@@ -174,34 +192,29 @@ def get_game_detail(game_id: str):
             else:
                 away_team_name = comp['team']['displayName']
 
-        # convert
+        # Takım ID'lerini dönüştür
         home_team_id = get_nba_api_team_id(home_team_name)
         away_team_id = get_nba_api_team_id(away_team_name)
 
-        # Son 5 Maçın Formunu ve Temel İstatistiklerini Çek
+        # 2. NBA API: Form ve İstatistik İsteklerine Timeout + Header Ekleme
         try:
-            home_log = teamgamelog.TeamGameLog(team_id=home_team_id).get_data_frames()[0].head(5)
-            away_log = teamgamelog.TeamGameLog(team_id=away_team_id).get_data_frames()[0].head(5)
+            home_log = teamgamelog.TeamGameLog(team_id=home_team_id, headers=CUSTOM_HEADERS, timeout=5).get_data_frames()[0].head(5)
+            away_log = teamgamelog.TeamGameLog(team_id=away_team_id, headers=CUSTOM_HEADERS, timeout=5).get_data_frames()[0].head(5)
             
             home_form_str = "".join(home_log['WL'].tolist()) 
             away_form_str = "".join(away_log['WL'].tolist())
-        except Exception:
+        except Exception as e:
+            print(f"⚠️ Form verisi çekilemedi (Timeout/API Hatası): {e}")
             home_form_str, away_form_str = "Bilinmiyor", "Bilinmiyor"
-            home_log = pd.DataFrame()
-            away_log = pd.DataFrame()
+            home_log, away_log = pd.DataFrame(), pd.DataFrame()
 
-        # istatistikler
         try:
             home_adv = teamdashboardbygeneralsplits.TeamDashboardByGeneralSplits(
-                team_id=home_team_id, 
-                measure_type_detailed_defense='Advanced', 
-                last_n_games=5
+                team_id=home_team_id, measure_type_detailed_defense='Advanced', last_n_games=5, headers=CUSTOM_HEADERS, timeout=5
             ).get_data_frames()[0]
             
             away_adv = teamdashboardbygeneralsplits.TeamDashboardByGeneralSplits(
-                team_id=away_team_id, 
-                measure_type_detailed_defense='Advanced', 
-                last_n_games=5
+                team_id=away_team_id, measure_type_detailed_defense='Advanced', last_n_games=5, headers=CUSTOM_HEADERS, timeout=5
             ).get_data_frames()[0]
 
             home_off_rtg = home_adv['OFF_RATING'].iloc[0] if not home_adv.empty else 115.0
@@ -215,11 +228,11 @@ def get_game_detail(game_id: str):
             away_ts = away_adv['TS_PCT'].iloc[0] if not away_adv.empty else 0.580
             
         except Exception as e:
-            print(f"⚠️ Gelişmiş veri çekilemedi: {e}")
+            print(f"⚠️ Gelişmiş veri çekilemedi (Timeout/API Hatası): {e}")
             home_off_rtg, home_def_rtg, home_pace, home_ts = 115.0, 115.0, 98.5, 0.580
             away_off_rtg, away_def_rtg, away_pace, away_ts = 115.0, 115.0, 98.5, 0.580
 
-        # Model için parametreler
+        # Model İçin Parametrelerin Hesaplanması
         if model:
             expected_features = model.feature_names_in_
             feature_dict = {}
@@ -263,7 +276,8 @@ def get_game_detail(game_id: str):
         away_prob = 100 - home_prob
         predicted_winner = home_team_name if home_prob >= 50 else away_team_name
 
-        return GameDetailResponse(
+        # 3. Sonucu Önbelleğe Kaydet ve Döndür
+        final_response = GameDetailResponse(
             homeTeam=home_team_name,
             awayTeam=away_team_name,
             matchDate=match_date,
@@ -276,5 +290,9 @@ def get_game_detail(game_id: str):
             homeForm=home_form_str,
             awayForm=away_form_str
         )
+        
+        DETAIL_CACHE[game_id] = (final_response, current_time)
+        return final_response
+
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
