@@ -31,9 +31,19 @@ CACHE_EXPIRE_SECONDS = 600
 
 CUSTOM_HEADERS = {
     'Host': 'stats.nba.com',
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36',
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*',
-    'Referer': 'https://www.nba.com/'
+    'Accept-Language': 'en-US,en;q=0.9,tr;q=0.8',
+    'Accept-Encoding': 'gzip, deflate, br',
+    'Connection': 'keep-alive',
+    'Referer': 'https://www.nba.com/',
+    'Origin': 'https://www.nba.com',
+    'Sec-Ch-Ua': '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"',
+    'Sec-Ch-Ua-Mobile': '?0',
+    'Sec-Ch-Ua-Platform': '"Windows"',
+    'Sec-Fetch-Dest': 'empty',
+    'Sec-Fetch-Mode': 'cors',
+    'Sec-Fetch-Site': 'same-site'
 }
 
 # ŞEMALAR VE YARDIMCI FONKSİYONLAR
@@ -197,24 +207,27 @@ def get_game_detail(game_id: str):
         away_team_id = get_nba_api_team_id(away_team_name)
 
         # 2. NBA API: Form ve İstatistik İsteklerine Timeout + Header Ekleme
+      # 2. NBA API İsteklerine Timeout ve Header Ekleme
         try:
-            home_log = teamgamelog.TeamGameLog(team_id=home_team_id, headers=CUSTOM_HEADERS, timeout=5).get_data_frames()[0].head(5)
-            away_log = teamgamelog.TeamGameLog(team_id=away_team_id, headers=CUSTOM_HEADERS, timeout=5).get_data_frames()[0].head(5)
+            # timeout=12 yapıyoruz!
+            home_log = teamgamelog.TeamGameLog(team_id=home_team_id, headers=CUSTOM_HEADERS, timeout=12).get_data_frames()[0].head(5)
+            away_log = teamgamelog.TeamGameLog(team_id=away_team_id, headers=CUSTOM_HEADERS, timeout=12).get_data_frames()[0].head(5)
             
             home_form_str = "".join(home_log['WL'].tolist()) 
             away_form_str = "".join(away_log['WL'].tolist())
         except Exception as e:
-            print(f"⚠️ Form verisi çekilemedi (Timeout/API Hatası): {e}")
+            print(f"⚠️ Form verisi çekilemedi: {e}")
             home_form_str, away_form_str = "Bilinmiyor", "Bilinmiyor"
             home_log, away_log = pd.DataFrame(), pd.DataFrame()
 
         try:
+            # timeout=12 yapıyoruz!
             home_adv = teamdashboardbygeneralsplits.TeamDashboardByGeneralSplits(
-                team_id=home_team_id, measure_type_detailed_defense='Advanced', last_n_games=5, headers=CUSTOM_HEADERS, timeout=5
+                team_id=home_team_id, measure_type_detailed_defense='Advanced', last_n_games=5, headers=CUSTOM_HEADERS, timeout=12
             ).get_data_frames()[0]
             
             away_adv = teamdashboardbygeneralsplits.TeamDashboardByGeneralSplits(
-                team_id=away_team_id, measure_type_detailed_defense='Advanced', last_n_games=5, headers=CUSTOM_HEADERS, timeout=5
+                team_id=away_team_id, measure_type_detailed_defense='Advanced', last_n_games=5, headers=CUSTOM_HEADERS, timeout=12
             ).get_data_frames()[0]
 
             home_off_rtg = home_adv['OFF_RATING'].iloc[0] if not home_adv.empty else 115.0
